@@ -31,6 +31,19 @@ public class Controller {
     @FXML
     ListView<String> listView;
 
+    @FXML
+    private void listViewTracker() {
+        String media = listView.getSelectionModel().getSelectedItem();
+        breakPlaying();
+        player.setMedia(Player.mediaFiles.get(media));
+        view.setMediaPlayer(player.getMediaPlayer());
+    }
+
+    private void breakPlaying() {
+        player.getMediaPlayer().stop();
+        isPlaying = false;
+        playOrPause.setText("Play");
+    }
 
     private void updateListView() {
         listView.setOrientation(Orientation.VERTICAL);
@@ -52,11 +65,7 @@ public class Controller {
 
     @FXML
     private void setVolume() {
-        volume.valueProperty().addListener(ov -> {
-            if (volume.isValueChanging()) {
-                player.getMediaPlayer().setVolume(volume.getValue() / 100.0);
-            }
-        });
+        player.getMediaPlayer().setVolume(volume.getValue() / 100.0);
     }
 
 //    @FXML
@@ -73,7 +82,7 @@ public class Controller {
     public void playOrPause() {
         if (!isPlaying) {
             player.play();
-            view.setMediaPlayer(player.getMediaPlayer());
+            if (view.getMediaPlayer() == null) view.setMediaPlayer(player.getMediaPlayer());
             sliderMoving();
             playOrPause.setText("Pause");
             isPlaying = true;
@@ -89,17 +98,21 @@ public class Controller {
 
     public void seek() {
         player.setSeekAfterSliderMoving(seekSlider.getValue());
+        sliderMoving();
     }
 
     private void sliderMoving() {
-        player.getMediaPlayer().currentTimeProperty().addListener(ov -> updateValues());
+        MediaPlayer mediaPlayer = player.getMediaPlayer();
+        double total = mediaPlayer.getTotalDuration().toMillis();
+        mediaPlayer.currentTimeProperty().addListener(ov -> updateValues(mediaPlayer, total));
     }
 
-    private void updateValues() {
-        MediaPlayer mediaPlayer = player.getMediaPlayer();
-        double current = mediaPlayer.getCurrentTime().toMillis();
-        double total = mediaPlayer.getTotalDuration().toMillis();
-        seekSlider.setValue((current / total) * 100);
+    private void updateValues(MediaPlayer mediaPlayer, double total) {
+//        if (!seekSlider.isHover()) {
+        if (!seekSlider.isPressed()) {
+            double current = mediaPlayer.getCurrentTime().toMillis();
+            seekSlider.setValue((current / total) * 100);
+        }
     }
 
     @FXML

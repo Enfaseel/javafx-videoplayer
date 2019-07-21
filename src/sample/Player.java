@@ -1,12 +1,5 @@
 package sample;
 
-import com.sun.javafx.scene.control.skin.LabeledText;
-import javafx.event.EventHandler;
-import javafx.fxml.FXML;
-import javafx.scene.control.ListView;
-import javafx.scene.input.MouseButton;
-import javafx.scene.input.MouseEvent;
-import javafx.scene.layout.GridPane;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
 import javafx.util.Duration;
@@ -15,7 +8,7 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
-public class Player {
+class Player {
 
     static Map<String, File> mediaFiles = new HashMap<>();
     private MediaPlayer mediaPlayer;
@@ -30,7 +23,6 @@ public class Player {
     }
 
     void play() {
-        //if (mediaPlayer == null) setMedia();
         mediaPlayer.play();
     }
 
