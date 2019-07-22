@@ -6,26 +6,62 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ListView;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.Slider;
+import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
 import javafx.scene.media.MediaView;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 
 import java.io.File;
+import java.util.Optional;
 
 public class Controller {
-    private Player player = new Player();
-    private boolean isPlaying = false;
+    private Player player = new Player() {
+        @Override
+        public void onPause() {
+            super.onPause();
+            playOrPause.setText("Play");
+        }
+        @Override
+        public void onPlay() {
+            super.onPlay();
+            playOrPause.setText("Pause");
+        }
+
+        @Override
+        public void onTimeChange(Duration oldTime, Duration newTime) {
+            super.onTimeChange(oldTime, newTime);
+            seekSlider.setValue(newTime.toMillis());
+        }
+
+        @Override
+        public void onMediaChanged(Media media) {
+            super.onMediaChanged(media);
+            double total = media.getDuration().toMillis();
+            playOrPause.setText("Play");
+            seekSlider.setValue(0);
+            seekSlider.setMax(total);
+        }
+    };
 
     @FXML
     MenuItem open;
 
     public void openMedia() {
+        //MediaPlayer mediaPlayer = player.getMediaPlayer();
+        Optional<MediaPlayer> mediaPlayer = Optional.ofNullable(player.getMediaPlayer());
+        mediaPlayer.filter(player -> player.getStatus() == MediaPlayer.Status.PLAYING)
+                .ifPresent(MediaPlayer::pause);
         FileChooser fileChooser = new FileChooser();
-        File mediaFile = fileChooser.showOpenDialog(new Stage());
-        Player.mediaFiles.put(mediaFile.getName(), mediaFile);
-        updateListView();
-        player.setMedia(mediaFile);
+        Optional<File> mediaFile = Optional.ofNullable(fileChooser.showOpenDialog(new Stage()));
+        if (mediaFile.isPresent()) {
+            File file = mediaFile.get();
+            Player.mediaFiles.put(file.getName(), file.getAbsoluteFile());
+            updateListView();
+            player.setMedia(mediaFile.get());
+            view.setMediaPlayer(player.getMediaPlayer());
+        }
     }
 
     @FXML
@@ -34,28 +70,23 @@ public class Controller {
     @FXML
     private void listViewTracker() {
         String media = listView.getSelectionModel().getSelectedItem();
-        breakPlaying();
-        player.setMedia(Player.mediaFiles.get(media));
-        view.setMediaPlayer(player.getMediaPlayer());
+        if (media != null) {
+            breakPlaying();
+            player.setMedia(Player.mediaFiles.get(media));
+            view.setMediaPlayer(player.getMediaPlayer());
+        }
     }
 
     private void breakPlaying() {
         player.getMediaPlayer().stop();
-        isPlaying = false;
-        playOrPause.setText("Play");
     }
 
     private void updateListView() {
         listView.setOrientation(Orientation.VERTICAL);
-        listView.getItems().removeAll();
+        listView.getItems().clear();
+//        listView.refresh();
         for (String name : Player.mediaFiles.keySet()) {
             //TODO: починить выбор конкретного файла и указатель на него
-//            if (player.getMediaPlayer() != null) {
-//                if (player.getMediaPlayer().getMedia().getSource().equals(Player.mediaFiles.get(name).toURI().toString())) {
-//                    listView.getItems().add(">>>" + name);
-//                    continue;
-//                }
-//            }
             listView.getItems().add(name);
         }
     }
@@ -80,16 +111,13 @@ public class Controller {
     MediaView view;
 
     public void playOrPause() {
-        if (!isPlaying) {
+        MediaPlayer.Status playerStatus = player.getMediaPlayer().getStatus();
+        if (playerStatus == MediaPlayer.Status.READY ||
+                playerStatus == MediaPlayer.Status.PAUSED) {
             player.play();
             if (view.getMediaPlayer() == null) view.setMediaPlayer(player.getMediaPlayer());
-            sliderMoving();
-            playOrPause.setText("Pause");
-            isPlaying = true;
         } else {
             player.pause();
-            playOrPause.setText("Play");
-            isPlaying = false;
         }
     }
 
@@ -98,27 +126,22 @@ public class Controller {
 
     public void seek() {
         player.setSeekAfterSliderMoving(seekSlider.getValue());
-        sliderMoving();
     }
 
-    private void sliderMoving() {
-        MediaPlayer mediaPlayer = player.getMediaPlayer();
-        double total = mediaPlayer.getTotalDuration().toMillis();
-        mediaPlayer.currentTimeProperty().addListener(ov -> updateValues(mediaPlayer, total));
-    }
-
-    private void updateValues(MediaPlayer mediaPlayer, double total) {
-//        if (!seekSlider.isHover()) {
-        if (!seekSlider.isPressed()) {
-            double current = mediaPlayer.getCurrentTime().toMillis();
-            seekSlider.setValue((current / total) * 100);
-        }
-    }
 
     @FXML
     MenuItem close;
 
     public void closeApplication() {
-        System.exit(0);
+
+    }
+
+    @FXML
+    public void setFullScreen() {
+        Stage stage = (Stage) view.getScene().getWindow();
+        if (!stage.isFullScreen()) {
+            //view.resize();
+            stage.setFullScreen(true);
+        } else stage.setFullScreen(false);
     }
 }
